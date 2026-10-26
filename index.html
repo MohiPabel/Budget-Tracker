@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monthly Budget</title>
+<style>
+  :root {
+    --bg: #f4f6fa;
+    --card: #ffffff;
+    --text: #1b2230;
+    --muted: #6b7587;
+    --line: #e5e9f0;
+    --accent: #3b6df0;
+    --accent-soft: #e8eefe;
+    --good: #19a463;
+    --bad: #e5484d;
+    --bad-soft: #fdecec;
+    --radius: 18px;
+    --shadow: 0 1px 2px rgba(20, 30, 60, .05), 0 8px 24px rgba(20, 30, 60, .06);
+    --font: -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1118;
+      --card: #171c26;
+      --text: #eef1f7;
+      --muted: #94a0b5;
+      --line: #262d3b;
+      --accent: #6c93ff;
+      --accent-soft: #1f2a47;
+      --good: #3dd68c;
+      --bad: #ff6b70;
+      --bad-soft: #3a1d20;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.45;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 8px 0 16px;
+  }
+  h1 { font-size: 1.35rem; margin: 0; letter-spacing: -.01em; }
+  h2 { font-size: 1rem; margin: 0 0 12px; letter-spacing: -.005em; }
+
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-size: .85rem; font-weight: 600;
+    padding: 6px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow); border: 1px solid var(--line); margin-bottom: 16px;
+  }
+
+  .monthbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .monthbar .grow { flex: 1; text-align: center; font-weight: 650; font-size: 1.05rem; text-transform: capitalize; }
+  .icon-btn {
+    width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); font-size: 1.1rem; cursor: pointer;
+  }
+  .icon-btn:hover { border-color: var(--accent); }
+
+  label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  input, select {
+    width: 100%; font: inherit; font-size: 1rem; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 12px; min-height: 44px; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .btn {
+    font: inherit; font-weight: 650; border: 0; border-radius: 12px; min-height: 44px;
+    padding: 0 18px; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .btn.ghost { background: var(--accent-soft); color: var(--accent); }
+  .btn:active { transform: scale(.98); }
+
+  /* Hero */
+  .hero { text-align: center; }
+  .hero .label { color: var(--muted); font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .hero .big { font-size: clamp(2.4rem, 11vw, 3.6rem); font-weight: 750; letter-spacing: -.03em; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+  .hero .big.over { color: var(--bad); }
+  .hero .sub { color: var(--muted); font-size: .9rem; min-height: 1.3em; }
+  .bar { height: 12px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 16px 0 6px; }
+  .bar > span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .35s ease; }
+  .bar.over > span { background: var(--bad); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .stat { background: var(--bg); border-radius: 14px; padding: 12px 8px; }
+  .stat b { display: block; font-size: 1rem; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .72rem; color: var(--muted); font-weight: 600; }
+  .budget-row { margin-top: 18px; text-align: left; }
+
+  /* Forms */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .full { grid-column: 1 / -1; }
+  @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* Chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px;
+    border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: .88rem;
+  }
+  .chip button {
+    border: 0; background: transparent; color: var(--muted); cursor: pointer; width: 26px; height: 26px;
+    border-radius: 50%; font-size: 1rem; line-height: 1;
+  }
+  .chip button:hover { background: var(--bad-soft); color: var(--bad); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .row-inline { display: flex; gap: 10px; }
+  .row-inline input { flex: 1; }
+  .hint { color: var(--muted); font-size: .8rem; margin: 10px 0 0; }
+  details > summary { cursor: pointer; font-weight: 650; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after { content: "＋"; color: var(--muted); }
+  details[open] > summary::after { content: "－"; }
+  details[open] > summary { margin-bottom: 14px; }
+
+  /* Lists */
+  .catrow { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 0; }
+  .catrow .meter { grid-column: 2 / -1; height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: -4px; }
+  .catrow .meter i { display: block; height: 100%; border-radius: 99px; }
+  .amt { font-variant-numeric: tabular-nums; font-weight: 650; white-space: nowrap; }
+  .tx { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+  .tx:first-child { border-top: 0; }
+  .tx .meta { color: var(--muted); font-size: .8rem; display: flex; align-items: center; gap: 6px; }
+  .tx .del { border: 0; background: transparent; color: var(--muted); cursor: pointer; width: 36px; height: 36px; border-radius: 10px; font-size: 1rem; }
+  .tx .del:hover { background: var(--bad-soft); color: var(--bad); }
+  .empty { color: var(--muted); text-align: center; padding: 16px 0; margin: 0; }
+
+  .foot { color: var(--muted); font-size: .78rem; text-align: center; margin-top: 8px; }
+  .print-only { display: none; }
+
+  /* Print */
+  @media print {
+    :root { --bg: #fff; --card: #fff; --text: #000; --muted: #444; --line: #ccc; --accent: #000; --bad: #b00020; --shadow: none; }
+    body { background: #fff; font-size: 11pt; }
+    .no-print { display: none !important; }
+    .print-only { display: block; }
+    .wrap { max-width: none; padding: 0; }
+    .card { box-shadow: none; border: 1px solid #bbb; break-inside: avoid; }
+    .bar > span, .catrow .meter i, .dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .tx .del { display: none; }
+    .tx { grid-template-columns: 1fr auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1 data-i18n="title">Monthly Budget</h1>
+    <div class="seg no-print" role="group" aria-label="Language">
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="it">IT</button>
+    </div>
+  </header>
+
+  <div class="monthbar no-print">
+    <button class="icon-btn" id="prevMonth" type="button" aria-label="Previous month">‹</button>
+    <div class="grow" id="monthLabel"></div>
+    <button class="icon-btn" id="nextMonth" type="button" aria-label="Next month">›</button>
+  </div>
+  <div class="print-only" style="margin-bottom:10px;font-size:1.1rem;font-weight:650;text-transform:capitalize" id="printMonth"></div>
+
+  <!-- Overview -->
+  <section class="card hero">
+    <div class="label" id="remLabel">Remaining</div>
+    <div class="big" id="remaining">€0.00</div>
+    <div class="sub" id="status"></div>
+    <div class="bar" id="bar"><span id="barFill"></span></div>
+    <div class="stats">
+      <div class="stat"><b id="sBudget">€0.00</b><span data-i18n="budgetShort">Budget</span></div>
+      <div class="stat"><b id="sSpent">€0.00</b><span data-i18n="spent">Spent</span></div>
+      <div class="stat"><b id="sSaved">€0.00</b><span data-i18n="savedInv">Saved &amp; invested</span></div>
+    </div>
+    <div class="budget-row no-print">
+      <label for="budget" data-i18n="budget">Budget for this month (€)</label>
+      <input id="budget" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+    </div>
+  </section>
+
+  <!-- Add expense -->
+  <section class="card no-print">
+    <h2 data-i18n="addExpense">Add expense</h2>
+    <form id="expForm" class="grid2" autocomplete="off">
+      <div>
+        <label for="xDate" data-i18n="date">Date</label>
+        <input id="xDate" type="date" required>
+      </div>
+      <div>
+        <label for="xAmount" data-i18n="amount">Amount (€)</label>
+        <input id="xAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" required>
+      </div>
+      <div class="full">
+        <label for="xDesc" data-i18n="description">Description</label>
+        <input id="xDesc" type="text" maxlength="80" data-i18n-ph="descPh" placeholder="e.g. Weekly groceries">
+      </div>
+      <div class="full">
+        <label for="xCat" data-i18n="category">Category</label>
+        <select id="xCat"></select>
+      </div>
+      <div class="full"><button class="btn" type="submit" style="width:100%" data-i18n="add">Add expense</button></div>
+    </form>
+  </section>
+
+  <!-- Categories -->
+  <section class="card no-print">
+    <details>
+      <summary><span data-i18n="manageCats">Manage categories</span></summary>
+      <div class="chips" id="chips"></div>
+      <form id="catForm" class="row-inline" autocomplete="off">
+        <input id="newCat" type="text" maxlength="30" data-i18n-ph="newCatPh" placeholder="New category, e.g. Gym">
+        <button class="btn" type="submit" data-i18n="addCat">Add</button>
+      </form>
+      <p class="hint" data-i18n="catHint">You can remove any category, even Savings or Investments. Their expenses move to “Other”.</p>
+      <p style="margin:12px 0 0"><button class="btn ghost" type="button" id="restore" data-i18n="restore">Restore defaults</button></p>
+    </details>
+  </section>
+
+  <!-- Breakdown -->
+  <section class="card">
+    <h2 data-i18n="byCat">Where the money went</h2>
+    <div id="breakdown"></div>
+  </section>
+
+  <!-- Expenses -->
+  <section class="card">
+    <h2 data-i18n="expenses">Expenses</h2>
+    <div id="list"></div>
+  </section>
+
+  <p class="no-print" style="text-align:center"><button class="btn" type="button" id="printBtn" data-i18n="print">Print / Save as PDF</button></p>
+  <p class="foot no-print" data-i18n="footer">Your data is saved on this device only.</p>
+  <p class="foot print-only" id="printedOn"></p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Text ---------- */
+  var T = {
+    en: {
+      title: "Monthly Budget", remaining: "Remaining", overBy: "Over budget by", spent: "Spent",
+      budgetShort: "Budget", savedInv: "Saved & invested", budget: "Budget for this month (€)",
+      addExpense: "Add expense", date: "Date", amount: "Amount (€)", description: "Description",
+      descPh: "e.g. Weekly groceries", category: "Category", add: "Add expense",
+      manageCats: "Manage categories", newCatPh: "New category, e.g. Gym", addCat: "Add",
+      catHint: "You can remove any category, even Savings or Investments. Their expenses move to “Other”.",
+      restore: "Restore defaults", byCat: "Where the money went", expenses: "Expenses",
+      none: "No expenses this month yet.", noneCat: "Nothing to show yet.",
+      print: "Print / Save as PDF", footer: "Your data is saved on this device only.",
+      setBudget: "Set a budget to get started", used: "% of your budget used",
+      remove: "Remove", printedOn: "Printed on", noDesc: "Expense",
+      cat: { housing: "Housing", food: "Food & Groceries", transport: "Transport", bills: "Bills & Utilities",
+             health: "Health", shopping: "Shopping", fun: "Entertainment", savings: "Savings",
+             investments: "Investments", other: "Other" }
+    },
+    it: {
+      title: "Budget Mensile", remaining: "Rimanente", overBy: "Sforamento di", spent: "Speso",
+      budgetShort: "Budget", savedInv: "Risparmi e investimenti", budget: "Budget per questo mese (€)",
+      addExpense: "Aggiungi spesa", date: "Data", amount: "Importo (€)", description: "Descrizione",
+      descPh: "es. Spesa settimanale", category: "Categoria", add: "Aggiungi spesa",
+      manageCats: "Gestisci categorie", newCatPh: "Nuova categoria, es. Palestra", addCat: "Aggiungi",
+      catHint: "Puoi rimuovere qualsiasi categoria, anche Risparmi o Investimenti. Le spese passano a “Altro”.",
+      restore: "Ripristina predefinite", byCat: "Dove sono andati i soldi", expenses: "Spese",
+      none: "Nessuna spesa questo mese.", noneCat: "Ancora niente da mostrare.",
+      print: "Stampa / Salva come PDF", footer: "I dati sono salvati solo su questo dispositivo.",
+      setBudget: "Imposta un budget per iniziare", used: "% del budget utilizzato",
+      remove: "Rimuovi", printedOn: "Stampato il", noDesc: "Spesa",
+      cat: { housing: "Casa", food: "Cibo e spesa", transport: "Trasporti", bills: "Bollette e utenze",
+             health: "Salute", shopping: "Shopping", fun: "Svago", savings: "Risparmi",
+             investments: "Investimenti", other: "Altro" }
+    }
+  };
+  var DEFAULTS = ["housing", "food", "transport", "bills", "health", "shopping", "fun", "savings", "investments", "other"];
+  var KEY = "budget-tracker-v1";
+
+  /* ---------- State ---------- */
+  function uid() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
+  function defaultCats() { return DEFAULTS.map(function (k) { return { id: k, key: k }; }); }
+
+  var state = { lang: "en", cats: defaultCats(), months: {} };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY));
+    if (saved && saved.cats && saved.months) state = saved;
+  } catch (e) {}
+  if (state.lang !== "it") state.lang = "en";
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  var today = new Date();
+  function pad(n) { return String(n).padStart(2, "0"); }
+  var current = today.getFullYear() + "-" + pad(today.getMonth() + 1);
+
+  function monthData(m) {
+    if (!state.months[m]) state.months[m] = { budget: 0, expenses: [] };
+    return state.months[m];
+  }
+
+  /* ---------- Helpers ---------- */
+  function t(k) { return T[state.lang][k]; }
+  function locale() { return state.lang === "it" ? "it-IT" : "en-IE"; }
+  function money(n) {
+    return new Intl.NumberFormat(locale(), { style: "currency", currency: "EUR" }).format(n || 0);
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function catById(id) { return state.cats.filter(function (c) { return c.id === id; })[0]; }
+  function catLabel(c) { return c.key ? T[state.lang].cat[c.key] : c.name; }
+  function labelForId(id) {
+    var c = catById(id);
+    return c ? catLabel(c) : T[state.lang].cat.other;
+  }
+  function hue(id) {
+    var h = 0;
+    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+    return "hsl(" + h + " 62% 55%)";
+  }
+  function monthName(m) {
+    var p = m.split("-");
+    return new Date(+p[0], +p[1] - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
+  }
+  function shiftMonth(m, d) {
+    var p = m.split("-");
+    var dt = new Date(+p[0], +p[1] - 1 + d, 1);
+    return dt.getFullYear() + "-" + pad(dt.getMonth() + 1);
+  }
+  function fmtDate(iso) {
+    var p = iso.split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString(locale(), { day: "numeric", month: "short" });
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- Render ---------- */
+  function applyStaticText() {
+    document.documentElement.lang = state.lang;
+    document.title = t("title");
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var k = el.getAttribute("data-i18n");
+      if (typeof t(k) === "string") el.textContent = t(k);
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+      el.placeholder = t(el.getAttribute("data-i18n-ph"));
+    });
+    document.querySelectorAll("[data-lang]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-lang") === state.lang ? "true" : "false");
+    });
+  }
+
+  function renderCategorySelect() {
+    var sel = $("xCat");
+    var prev = sel.value;
+    sel.innerHTML = state.cats.map(function (c) {
+      return '<option value="' + esc(c.id) + '">' + esc(catLabel(c)) + "</option>";
+    }).join("");
+    if (!state.cats.length) {
+      sel.innerHTML = '<option value="other">' + esc(T[state.lang].cat.other) + "</option>";
+    }
+    if (prev && catById(prev)) sel.value = prev;
+  }
+
+  function renderChips() {
+    $("chips").innerHTML = state.cats.map(function (c) {
+      return '<span class="chip"><i class="dot" style="background:' + hue(c.id) + '"></i>' + esc(catLabel(c)) +
+        '<button type="button" data-del-cat="' + esc(c.id) + '" aria-label="' + esc(t("remove")) + '">×</button></span>';
+    }).join("");
+  }
+
+  function renderOverview(md) {
+    var spent = 0, set = 0;
+    md.expenses.forEach(function (x) {
+      spent += x.amount;
+      if (x.cat === "savings" || x.cat === "investments") set += x.amount;
+    });
+    var budget = md.budget || 0;
+    var rem = budget - spent;
+    var over = budget > 0 && rem < 0;
+
+    $("remLabel").textContent = over ? t("overBy") : t("remaining");
+    $("remaining").textContent = money(Math.abs(over ? rem : rem));
+    $("remaining").className = "big" + (over ? " over" : "");
+    $("sBudget").textContent = money(budget);
+    $("sSpent").textContent = money(spent);
+    $("sSaved").textContent = money(set);
+
+    var pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+    $("barFill").style.width = Math.min(100, pct) + "%";
+    $("bar").className = "bar" + (over ? " over" : "");
+    $("status").textContent = budget > 0 ? pct + t("used") : t("setBudget");
+    return spent;
+  }
+
+  function renderBreakdown(md, spent) {
+    var totals = {};
+    md.expenses.forEach(function (x) {
+      var id = catById(x.cat) ? x.cat : "other";
+      totals[id] = (totals[id] || 0) + x.amount;
+    });
+    var ids = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; });
+    if (!ids.length) { $("breakdown").innerHTML = '<p class="empty">' + esc(t("noneCat")) + "</p>"; return; }
+    $("breakdown").innerHTML = ids.map(function (id) {
+      var share = spent > 0 ? (totals[id] / spent) * 100 : 0;
+      return '<div class="catrow"><i class="dot" style="background:' + hue(id) + '"></i>' +
+        "<span>" + esc(labelForId(id)) + "</span>" +
+        '<span class="amt">' + money(totals[id]) + "</span>" +
+        '<div class="meter"><i style="width:' + share.toFixed(1) + "%;background:" + hue(id) + '"></i></div></div>';
+    }).join("");
+  }
+
+  function renderList(md) {
+    if (!md.expenses.length) { $("list").innerHTML = '<p class="empty">' + esc(t("none")) + "</p>"; return; }
+    var items = md.expenses.slice().sort(function (a, b) {
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+    });
+    $("list").innerHTML = items.map(function (x) {
+      return '<div class="tx"><div><div>' + esc(x.desc || t("noDesc")) + "</div>" +
+        '<div class="meta"><i class="dot" style="background:' + hue(catById(x.cat) ? x.cat : "other") + '"></i>' +
+        esc(labelForId(x.cat)) + " · " + esc(fmtDate(x.date)) + "</div></div>" +
+        '<div class="amt">' + money(x.amount) + "</div>" +
+        '<button class="del" type="button" data-del-exp="' + esc(x.id) + '" aria-label="' + esc(t("remove")) + '">✕</button></div>';
+    }).join("");
+  }
+
+  function setDateLimits() {
+    var p = current.split("-");
+    var last = new Date(+p[0], +p[1], 0).getDate();
+    var d = $("xDate");
+    d.min = current + "-01";
+    d.max = current + "-" + pad(last);
+    var cur = d.value;
+    if (!cur || cur.slice(0, 7) !== current) {
+      var isNow = current === today.getFullYear() + "-" + pad(today.getMonth() + 1);
+      d.value = isNow ? current + "-" + pad(today.getDate()) : current + "-01";
+    }
+  }
+
+  function render() {
+    var md = monthData(current);
+    applyStaticText();
+    $("monthLabel").textContent = monthName(current);
+    $("printMonth").textContent = monthName(current);
+    $("printedOn").textContent = t("printedOn") + " " + today.toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" });
+    if (document.activeElement !== $("budget")) $("budget").value = md.budget ? md.budget : "";
+    renderCategorySelect();
+    renderChips();
+    var spent = renderOverview(md);
+    renderBreakdown(md, spent);
+    renderList(md);
+    setDateLimits();
+  }
+
+  /* ---------- Events ---------- */
+  document.querySelectorAll("[data-lang]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.lang = b.getAttribute("data-lang");
+      save(); render();
+    });
+  });
+
+  $("prevMonth").addEventListener("click", function () { current = shiftMonth(current, -1); render(); });
+  $("nextMonth").addEventListener("click", function () { current = shiftMonth(current, 1); render(); });
+
+  $("budget").addEventListener("input", function () {
+    var v = parseFloat(this.value);
+    monthData(current).budget = isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0;
+    save();
+    var md = monthData(current);
+    var spent = renderOverview(md);
+    renderBreakdown(md, spent);
+  });
+
+  $("expForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var amount = Math.round(parseFloat($("xAmount").value) * 100) / 100;
+    var date = $("xDate").value;
+    if (!isFinite(amount) || amount <= 0 || !date) return;
+    var month = date.slice(0, 7);
+    monthData(month).expenses.push({
+      id: uid(), date: date, desc: $("xDesc").value.trim(),
+      cat: $("xCat").value || "other", amount: amount
+    });
+    save();
+    $("xAmount").value = "";
+    $("xDesc").value = "";
+    if (month !== current) current = month;
+    render();
+    $("xAmount").focus();
+  });
+
+  $("catForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = $("newCat").value.trim();
+    if (!name) return;
+    var exists = state.cats.some(function (c) { return catLabel(c).toLowerCase() === name.toLowerCase(); });
+    if (!exists) state.cats.push({ id: "c-" + uid(), name: name });
+    $("newCat").value = "";
+    save(); render();
+  });
+
+  $("chips").addEventListener("click", function (e) {
+    var id = e.target.getAttribute("data-del-cat");
+    if (!id) return;
+    state.cats = state.cats.filter(function (c) { return c.id !== id; });
+    Object.keys(state.months).forEach(function (m) {
+      state.months[m].expenses.forEach(function (x) { if (x.cat === id) x.cat = "other"; });
+    });
+    save(); render();
+  });
+
+  $("restore").addEventListener("click", function () {
+    var customs = state.cats.filter(function (c) { return !c.key; });
+    state.cats = defaultCats().concat(customs);
+    save(); render();
+  });
+
+  $("list").addEventListener("click", function (e) {
+    var id = e.target.getAttribute("data-del-exp");
+    if (!id) return;
+    var md = monthData(current);
+    md.expenses = md.expenses.filter(function (x) { return x.id !== id; });
+    save(); render();
+  });
+
+  $("printBtn").addEventListener("click", function () { window.print(); });
+
+  render();
+})();
+</script>
+</body>
+</html>
